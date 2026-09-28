@@ -48,6 +48,7 @@ class SensorObserver(Node):
         self.scan_count = 0
         self.outlier_count = 0
         self.print_counter = 0
+        self.yaw = 0
 
         # Print timer — summary every 5 seconds
         self.create_timer(5.0, self.print_summary)
@@ -68,10 +69,6 @@ class SensorObserver(Node):
     def odom_callback(self, msg: Odometry):
         # TODO: extract x, y, yaw and log them
 
-        self.print_counter += 1
-        if self.print_counter % 15 != 0:
-            return
-
         x_pos = msg.pose.pose.position.x
         y_pos = msg.pose.pose.position.y
 
@@ -81,6 +78,17 @@ class SensorObserver(Node):
         w = msg.pose.pose.orientation.w
 
         yaw = math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
+
+        # Track the return trip
+        if self.yaw < 0 and yaw >= 0:
+            print("Full circle")
+
+        self.yaw = yaw
+
+        self.print_counter += 1
+        if self.print_counter % 15 != 0:
+            return
+
         print("Print counter = " + str(self.print_counter))
         print("Pos x = " + str(x_pos))
         print("Pos y = " + str(y_pos))
@@ -94,8 +102,12 @@ class SensorObserver(Node):
     # ─────────────────────────────────────────────────────────
     def imu_callback(self, msg: Imu):
         # TODO: collect angular_velocity.z samples
-        #print(msg)
-        doSomething = "To make odom work, weird"
+        angular_velocity = msg.angular_velocity
+        z = angular_velocity.z
+        self.imu_gyro_z_samples.append(z)
+        length = len(self.imu_gyro_z_samples)
+        if length % 100 == 0:
+            print("Gathered " + str(length) + " samples")
 
     # ─────────────────────────────────────────────────────────
     # TODO 1c: LiDAR callback
