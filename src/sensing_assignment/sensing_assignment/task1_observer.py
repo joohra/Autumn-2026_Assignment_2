@@ -47,6 +47,8 @@ class SensorObserver(Node):
         self.imu_gyro_z_samples = []  # collect samples for statistics
         self.scan_count = 0
         self.outlier_count = 0
+
+        # Diy
         self.print_counter = 0
         self.yaw = 0
 
@@ -86,8 +88,8 @@ class SensorObserver(Node):
         self.yaw = yaw
 
         self.print_counter += 1
-        if self.print_counter % 15 != 0:
-            return
+        #if self.print_counter % 15 != 0:
+        return
 
         print("Print counter = " + str(self.print_counter))
         print("Pos x = " + str(x_pos))
@@ -107,7 +109,8 @@ class SensorObserver(Node):
         self.imu_gyro_z_samples.append(z)
         length = len(self.imu_gyro_z_samples)
         if length % 100 == 0:
-            print("Gathered " + str(length) + " samples")
+            #print("Gathered " + str(length) + " samples")
+            pass
 
     # ─────────────────────────────────────────────────────────
     # TODO 1c: LiDAR callback
@@ -126,11 +129,15 @@ class SensorObserver(Node):
         ]
 
         outliers_count = total_rays - len(valid_ranges)
+
+        self.scan_count += total_rays
+        self.outlier_count += outliers_count
+
         min_range = float('inf')  # No valid obstacles detected
         if valid_ranges:
             min_range = min(valid_ranges)
 
-        print("Min range in measure = " + str(min_range))
+        # print("Min range in measure = " + str(min_range))
 
     # ─────────────────────────────────────────────────────────
     # TODO 1d: Print summary statistics
@@ -143,7 +150,34 @@ class SensorObserver(Node):
         # TODO: compute and print statistics
         # Hint: use sum()/len() for mean
         #       std = math.sqrt(sum((x-mean)**2 for x in samples) / len(samples))
-        pass
+        # ── 1. IMU Gyro Z Statistics ─────────────────────────────
+        if self.imu_gyro_z_samples:
+            imu_count = len(self.imu_gyro_z_samples)
+            mean_gyro_z = sum(self.imu_gyro_z_samples) / imu_count
+
+            # Calculate sample standard deviation
+            variance = sum((x - mean_gyro_z) ** 2 for x in self.imu_gyro_z_samples) / imu_count
+            std_gyro_z = math.sqrt(variance)
+
+            self.get_logger().info(
+                f"[IMU Summary] Samples: {imu_count} | Mean Gyro Z: {mean_gyro_z:.5f} rad/s | Std Dev: {std_gyro_z:.5f}"
+            )
+        else:
+            self.get_logger().warn("[IMU Summary] No IMU data received in this interval.")
+
+        # ── 2. LiDAR Outlier Statistics ──────────────────────────
+        if self.scan_count > 0:
+            outlier_percentage = (self.outlier_count / self.scan_count) * 100.0
+            self.get_logger().info(
+                f"[LiDAR Summary] Total Rays: {self.scan_count} | Outliers: {self.outlier_count} ({outlier_percentage:.2f}%)"
+            )
+        else:
+            self.get_logger().warn("[LiDAR Summary] No LiDAR data received in this interval.")
+
+        # Reset
+        self.imu_gyro_z_samples.clear()
+        self.scan_count = 0
+        self.outlier_count = 0
 
 
 def main(args=None):
