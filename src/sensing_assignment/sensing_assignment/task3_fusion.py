@@ -147,15 +147,16 @@ class PoseFusion(Node):
         After each complete circle (360°) the robot should be
         back to yaw ≈ 0. Any deviation is the drift error.
         """
-        self.get_logger().info(
-            "\n--- Heading comparison ---\n"
-            f"  Odom heading:  {math.degrees(self.yaw_odom):+.2f}°\n"
-            f"  IMU heading:   {math.degrees(self.yaw_imu):+.2f}°\n"
-            f"  Fused heading: {math.degrees(self.yaw_fused):+.2f}°\n"
-            f"  Position (odom): x={self.x:.3f}m  y={self.y:.3f}m\n"
-            "  After 1 full circle all headings should read ~360°\n"
-            "  Deviation from 360° = drift error"
-        )
+        # self.get_logger().info(
+        #     "\n--- Heading comparison ---\n"
+        #     f"  Odom heading:  {math.degrees(self.yaw_odom):+.2f}°\n"
+        #     f"  IMU heading:   {math.degrees(self.yaw_imu):+.2f}°\n"
+        #     f"  Fused heading: {math.degrees(self.yaw_fused):+.2f}°\n"
+        #     f"  Position (odom): x={self.x:.3f}m  y={self.y:.3f}m\n"
+        #     "  After 1 full circle all headings should read ~360°\n"
+        #     "  Deviation from 360° = drift error"
+        # )
+        pass
 
 
 def main(args=None):

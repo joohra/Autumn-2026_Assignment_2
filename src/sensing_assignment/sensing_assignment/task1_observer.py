@@ -47,6 +47,7 @@ class SensorObserver(Node):
         self.imu_gyro_z_samples = []  # collect samples for statistics
         self.scan_count = 0
         self.outlier_count = 0
+        self.print_counter = 0
 
         # Print timer — summary every 5 seconds
         self.create_timer(5.0, self.print_summary)
@@ -62,9 +63,29 @@ class SensorObserver(Node):
     #       convert quaternion to yaw using:
     #           yaw = math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
     # ─────────────────────────────────────────────────────────
+
+
     def odom_callback(self, msg: Odometry):
         # TODO: extract x, y, yaw and log them
-        pass
+
+        self.print_counter += 1
+        if self.print_counter % 15 != 0:
+            return
+
+        x_pos = msg.pose.pose.position.x
+        y_pos = msg.pose.pose.position.y
+
+        x = msg.pose.pose.orientation.x
+        y = msg.pose.pose.orientation.y
+        z = msg.pose.pose.orientation.z
+        w = msg.pose.pose.orientation.w
+
+        yaw = math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
+        print("Print counter = " + str(self.print_counter))
+        print("Pos x = " + str(x_pos))
+        print("Pos y = " + str(y_pos))
+        print("YAW = " + str(yaw), flush=True)
+
 
     # ─────────────────────────────────────────────────────────
     # TODO 1b: IMU callback
@@ -73,7 +94,8 @@ class SensorObserver(Node):
     # ─────────────────────────────────────────────────────────
     def imu_callback(self, msg: Imu):
         # TODO: collect angular_velocity.z samples
-        pass
+        #print(msg)
+        doSomething = "To make odom work, weird"
 
     # ─────────────────────────────────────────────────────────
     # TODO 1c: LiDAR callback
