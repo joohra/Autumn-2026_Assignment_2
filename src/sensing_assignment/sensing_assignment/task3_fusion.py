@@ -102,8 +102,21 @@ class PoseFusion(Node):
     # Then call self.publish_fused_pose()
     # ─────────────────────────────────────────────────────────
     def odom_callback(self, msg: Odometry):
-        # TODO: extract position and yaw from odometry
-        pass
+        # Extract position
+        self.x = msg.pose.pose.position.x
+        self.y = msg.pose.pose.position.y
+
+        # Extract orientation quaternion components
+        q = msg.pose.pose.orientation
+
+        # Calculate yaw using the quaternion formula
+        self.yaw_odom = math.atan2(
+            2.0 * (q.w * q.z + q.x * q.y),
+            1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        )
+
+        # Call the pose fusion publisher function
+        self.publish_fused_pose()
 
     # ─────────────────────────────────────────────────────────
     # TODO 3b: IMU callback — integrate gyro to estimate heading
@@ -118,8 +131,30 @@ class PoseFusion(Node):
     # 3. Update self.last_imu_stamp = msg.header.stamp
     # ─────────────────────────────────────────────────────────
     def imu_callback(self, msg: Imu):
-        # TODO: integrate gyro angular_velocity.z over time
-        pass
+        current_stamp = msg.header.stamp
+
+        # 1. Handle first message / compute dt
+        if self.last_imu_stamp is None:
+            self.last_imu_stamp = current_stamp
+            return
+
+        # Compute time step (dt) in seconds
+        dt = (current_stamp.sec - self.last_imu_stamp.sec) + \
+             (current_stamp.nanosec - self.last_imu_stamp.nanosec) * 1e-9
+
+        # Guard against zero or non-monotonic timestamps (clock jumps)
+        if dt <= 0.0:
+            self.last_imu_stamp = current_stamp
+            return
+
+        # 2. Integrate angular velocity (Euler integration)
+        self.yaw_imu += msg.angular_velocity.z * dt
+
+        # Normalize yaw to keep it within [-pi, pi]
+        self.yaw_imu = math.atan2(math.sin(self.yaw_imu), math.cos(self.yaw_imu))
+
+        # 3. Update last timestamp
+        self.last_imu_stamp = current_stamp
 
     # ─────────────────────────────────────────────────────────
     # TODO 3c: Complementary filter and publish
@@ -138,8 +173,33 @@ class PoseFusion(Node):
     # 3. Publish on /pose_fused
     # ─────────────────────────────────────────────────────────
     def publish_fused_pose(self):
-        # TODO: compute fused heading and publish
-        pass
+        # 1. Fuse headings using the complementary filter
+        self.yaw_fused = (self.alpha * self.yaw_odom +
+                          (1.0 - self.alpha) * self.yaw_imu)
+
+        # Normalize fused yaw angle to stay within [-pi, pi]
+        self.yaw_fused = math.atan2(math.sin(self.yaw_fused), math.cos(self.yaw_fused))
+
+        # 2. Build PoseStamped message
+        fused_msg = PoseStamped()
+
+        # Header metadata
+        fused_msg.header.stamp = self.get_clock().now().to_msg()
+        fused_msg.header.frame_id = "odom"
+
+        # Position
+        fused_msg.pose.position.x = float(self.x)
+        fused_msg.pose.position.y = float(self.y)
+        fused_msg.pose.position.z = 0.0
+
+        # Orientation (Yaw to Quaternion conversion)
+        fused_msg.pose.orientation.x = 0.0
+        fused_msg.pose.orientation.y = 0.0
+        fused_msg.pose.orientation.z = math.sin(self.yaw_fused / 2.0)
+        fused_msg.pose.orientation.w = math.cos(self.yaw_fused / 2.0)
+
+        # 3. Publish on /pose_fused
+        self.pose_pub.publish(fused_msg)
 
     def print_comparison(self):
         """
@@ -147,16 +207,15 @@ class PoseFusion(Node):
         After each complete circle (360°) the robot should be
         back to yaw ≈ 0. Any deviation is the drift error.
         """
-        # self.get_logger().info(
-        #     "\n--- Heading comparison ---\n"
-        #     f"  Odom heading:  {math.degrees(self.yaw_odom):+.2f}°\n"
-        #     f"  IMU heading:   {math.degrees(self.yaw_imu):+.2f}°\n"
-        #     f"  Fused heading: {math.degrees(self.yaw_fused):+.2f}°\n"
-        #     f"  Position (odom): x={self.x:.3f}m  y={self.y:.3f}m\n"
-        #     "  After 1 full circle all headings should read ~360°\n"
-        #     "  Deviation from 360° = drift error"
-        # )
-        pass
+        self.get_logger().info(
+            "\n--- Heading comparison ---\n"
+            f"  Odom heading:  {math.degrees(self.yaw_odom):+.2f}°\n"
+            f"  IMU heading:   {math.degrees(self.yaw_imu):+.2f}°\n"
+            f"  Fused heading: {math.degrees(self.yaw_fused):+.2f}°\n"
+            f"  Position (odom): x={self.x:.3f}m  y={self.y:.3f}m\n"
+            "  After 1 full circle all headings should read ~360°\n"
+            "  Deviation from 360° = drift error"
+        )
 
 
 def main(args=None):

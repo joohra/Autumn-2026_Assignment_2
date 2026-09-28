@@ -50,7 +50,6 @@ class SensorObserver(Node):
 
         # Diy
         self.print_counter = 0
-        self.yaw = 0
 
         # Print timer — summary every 5 seconds
         self.create_timer(5.0, self.print_summary)
@@ -81,13 +80,14 @@ class SensorObserver(Node):
 
         yaw = math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
 
-        # Track the return trip
-        if self.yaw < 0 and yaw >= 0:
-            print("Full circle")
-
-        self.yaw = yaw
+        return
 
         self.print_counter += 1
+        if self.print_counter % 20 == 0:
+            self.get_logger().info(
+                f"Odom -> Pos X: {x_pos:.3f} m, Pos Y: {y_pos:.3f} m | Yaw: {yaw:.3f} rad ({math.degrees(yaw):.1f}°)"
+            )
+
 
     # ─────────────────────────────────────────────────────────
     # TODO 1b: IMU callback
