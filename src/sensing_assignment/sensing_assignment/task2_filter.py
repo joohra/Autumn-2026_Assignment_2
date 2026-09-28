@@ -82,8 +82,25 @@ class SensorFilter(Node):
     #   filtered.angular_velocity.z  = self.gyro_z_avg   # override z only
     # ─────────────────────────────────────────────────────────
     def imu_callback(self, msg: Imu):
-        # TODO: apply running average to gyro Z and publish
-        pass
+        # 1. Update the running average (Low-pass filter)
+        self.gyro_z_avg = 0.9 * self.gyro_z_avg + 0.1 * msg.angular_velocity.z
+
+        # 2. Create a new Imu message and copy original header/data
+        filtered = Imu()
+        filtered.header = msg.header
+        filtered.orientation = msg.orientation
+        filtered.orientation_covariance = msg.orientation_covariance
+        filtered.angular_velocity = msg.angular_velocity
+        filtered.angular_velocity_covariance = msg.angular_velocity_covariance
+        filtered.linear_acceleration = msg.linear_acceleration
+        filtered.linear_acceleration_covariance = msg.linear_acceleration_covariance
+
+        # Override angular_velocity.z with the filtered value
+        filtered.angular_velocity.z = self.gyro_z_avg
+
+        # 3. Publish the filtered message on /imu_filtered
+        self.imu_pub.publish(filtered)
+
 
     # ─────────────────────────────────────────────────────────
     # TODO 2b: LiDAR invalid ray removal
@@ -101,8 +118,30 @@ class SensorFilter(Node):
     #           ranges[i] = 0.0
     # ─────────────────────────────────────────────────────────
     def scan_callback(self, msg: LaserScan):
-        # TODO: remove invalid rays and publish
-        pass
+        # 1. Create a new LaserScan message and copy metadata
+        filtered_scan = LaserScan()
+        filtered_scan.header = msg.header
+        filtered_scan.angle_min = msg.angle_min
+        filtered_scan.angle_max = msg.angle_max
+        filtered_scan.angle_increment = msg.angle_increment
+        filtered_scan.time_increment = msg.time_increment
+        filtered_scan.scan_time = msg.scan_time
+        filtered_scan.range_min = msg.range_min
+        filtered_scan.range_max = msg.range_max
+        filtered_scan.intensities = msg.intensities
+
+        # 2. Make a mutable list copy of the tuple msg.ranges and clean invalid rays
+        ranges = list(msg.ranges)
+        for i in range(len(ranges)):
+            # Replace inf, NaN, or values below range_min with 0.0
+            if math.isinf(ranges[i]) or math.isnan(ranges[i]) or ranges[i] < msg.range_min:
+                ranges[i] = 0.0
+
+        # Assign cleaned ranges to the filtered message
+        filtered_scan.ranges = ranges
+
+        # 3. Publish the cleaned scan on /scan_filtered
+        self.scan_pub.publish(filtered_scan)
 
 
 def main(args=None):

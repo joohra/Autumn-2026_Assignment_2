@@ -88,14 +88,6 @@ class SensorObserver(Node):
         self.yaw = yaw
 
         self.print_counter += 1
-        #if self.print_counter % 15 != 0:
-        return
-
-        print("Print counter = " + str(self.print_counter))
-        print("Pos x = " + str(x_pos))
-        print("Pos y = " + str(y_pos))
-        print("YAW = " + str(yaw), flush=True)
-
 
     # ─────────────────────────────────────────────────────────
     # TODO 1b: IMU callback
@@ -103,14 +95,9 @@ class SensorObserver(Node):
     # Store samples in self.imu_gyro_z_samples for statistics.
     # ─────────────────────────────────────────────────────────
     def imu_callback(self, msg: Imu):
-        # TODO: collect angular_velocity.z samples
         angular_velocity = msg.angular_velocity
         z = angular_velocity.z
         self.imu_gyro_z_samples.append(z)
-        length = len(self.imu_gyro_z_samples)
-        if length % 100 == 0:
-            #print("Gathered " + str(length) + " samples")
-            pass
 
     # ─────────────────────────────────────────────────────────
     # TODO 1c: LiDAR callback
@@ -119,7 +106,6 @@ class SensorObserver(Node):
     # Also find the minimum valid range (nearest obstacle).
     # ─────────────────────────────────────────────────────────
     def scan_callback(self, msg: LaserScan):
-        # TODO: count total rays and outlier rays
         total_rays = len(msg.ranges)
         valid_ranges = [
             r for r in msg.ranges
@@ -133,11 +119,6 @@ class SensorObserver(Node):
         self.scan_count += total_rays
         self.outlier_count += outliers_count
 
-        min_range = float('inf')  # No valid obstacles detected
-        if valid_ranges:
-            min_range = min(valid_ranges)
-
-        # print("Min range in measure = " + str(min_range))
 
     # ─────────────────────────────────────────────────────────
     # TODO 1d: Print summary statistics
@@ -147,9 +128,6 @@ class SensorObserver(Node):
     # Clear the sample buffer after printing.
     # ─────────────────────────────────────────────────────────
     def print_summary(self):
-        # TODO: compute and print statistics
-        # Hint: use sum()/len() for mean
-        #       std = math.sqrt(sum((x-mean)**2 for x in samples) / len(samples))
         # ── 1. IMU Gyro Z Statistics ─────────────────────────────
         if self.imu_gyro_z_samples:
             imu_count = len(self.imu_gyro_z_samples)
