@@ -117,7 +117,20 @@ class SensorObserver(Node):
     # ─────────────────────────────────────────────────────────
     def scan_callback(self, msg: LaserScan):
         # TODO: count total rays and outlier rays
-        pass
+        total_rays = len(msg.ranges)
+        valid_ranges = [
+            r for r in msg.ranges
+            if msg.range_min <= r <= msg.range_max
+            and not math.isnan(r)
+            and not math.isinf(r)
+        ]
+
+        outliers_count = total_rays - len(valid_ranges)
+        min_range = float('inf')  # No valid obstacles detected
+        if valid_ranges:
+            min_range = min(valid_ranges)
+
+        print("Min range in measure = " + str(min_range))
 
     # ─────────────────────────────────────────────────────────
     # TODO 1d: Print summary statistics
